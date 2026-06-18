@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>For Xu Yiting ✦ Earth-Moon L1</title>
+<style>
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;-webkit-tap-highlight-color:transparent;font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif}
+canvas{display:block;position:fixed;top:0;left:0;width:100%;height:100%}
+
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+
+// ═══════════════════════════════════════════════════════════════════════
+// EARTH-MOON L1 LAGRANGE POINT · 120° FISHEYE · ULTRA DEEP SPACE EPIC
+// Earth 25% frame (bottom-right) · 7 stellar types · 6 ISM morphologies
+// 5 ballistic trajectories · gravitational lens Einstein rings
+// TIME DUALITY: Earth clouds 20m/s realtime · Deep space 1000yr/s collapse
+// ═══════════════════════════════════════════════════════════════════════
+
+(function(){
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// ── Palette ───────────────────────────────────────
+const KLEIN_BLUE    = [0,47,167];
+const EMERALD       = [0,180,100];
+const GOLD_RED      = [220,50,15];
+const VIOLET        = [80,20,140];
+const INDIGO        = [20,10,60];
+const NEBULA_PURPLE = [107,63,160];
+const GOLD_AMBER    = [255,176,0];
+const D65_WHITE     = [245,240,232];
+const SODIUM_YELLOW = [255,180,20];  // Na 589nm airglow
+const OXYGEN_GREEN  = [80,220,120];  // O 557.7nm airglow
+const OXYGEN_BLUE   = [30,180,255];  // O 630nm chemiluminescence
+const AURORA_GREEN  = [100,255,150];
+const AURORA_MAGENTA= [255,60,200];
+const H_ALPHA_RED   = [255,40,80];   // Hα 656nm nebula
+const OIII_CYAN      = [40,220,200];  // [OIII] 500.7nm
+
+// ── State ────────────────────────────────────────
+let W, H, dpr, halfW, halfH, maxDim;
+let staticLayers = {};
+let staticDirty = true;
+let time = 0;
+let meteors = [];
+let sparkParticles = [];
+let touchTrails = [];
+let brightStars = [];
+let spikeStars = [];
+let dimStars8k = [];
+let flareSpots = [];
+let wishes = [];
+let deepMeteors = [];
+let earthCloudOffset = 0;
+let spaceCollapse = 0;
+let typhoonAngle = 0;
+let ashenLight = 0;
+
+// ── Utility ──────────────────────────────────────
+function rand(min,max){ return min+Math.random()*(max-min) }
+function randInt(min,max){ return Math.floor(rand(min,max+1)) }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)] }
+function lerp(a,b,t){ return a+(b-a)*t }
+function lerpColor(c1,c2,t){ return c1.map((v,i)=>Math.round(lerp(v,c2[i],t))) }
+function rgbaStr(c,a){ return `rgba(${c[0]},${c[1]},${c[2]},${a})` }
+function hslaStr(h,s,l,a){ return `hsla(${h},${s}%,${l}%,${a})` }
+function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)) }
+function dist(x1,y1,x2,y2){ return Math.hypot(x2-x1,y2-y1) }
+
+// ── Resize ───────────────────────────────────────
+function resize(){
+  dpr = Math.min(window.devicePixelRatio||1,2);
+  W = window.innerWidth;
+  H = window.innerHeight;
+  halfW = W/2; halfH = H/2;
+  maxDim = Math.max(W,H);
+  canvas.width = W*dpr;
+  canvas.height = H*dpr;
+  canvas.style.width = W+'px';
+  canvas.style.height = H+'px';
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr,dpr);
+  staticDirty = true;
+  initStars();
+  initMeteors();
+  initDeepMeteors();
+}
+
+// ── Offscreen layer factory ──────────────────────
+function makeLayer(id){
+  const c = document.createElement('canvas');
+  c.width = W*dpr; c.height = H*dpr;
+  const cx = c.getContext('2d');
+  cx.scale(dpr,dpr);
+  staticLayers[id] = {canvas:c, ctx:cx};
+  return cx;
+}
+
+// ═══════════════════════════════════════════════════
+// STATIC LAYER BUILDER
+// ═══════════════════════════════════════════════════
+
+function buildAllStaticLayers(){
+  Object.values(staticLayers).forEach(l=>l.canvas=null);
+  staticLayers = {};
+  buildL0(); buildL1(); buildL2(); buildL3(); buildL4(); buildL5();
+  staticDirty = false;
+}
+
+// ── Earth geometry (bottom-right, ~25% frame) ────
+const EARTH_CX_RATIO = 0.73;
+const EARTH_CY_RATIO = 0.62;
+const EARTH_R_RATIO = 0.21;   // radius ratio to maxDim
+let earthCX, earthCY, earthR;
+
+function updateEarthGeo(){
+  earthCX = W*EARTH_CX_RATIO;
+  earthCY = H*EARTH_CY_RATIO;
+  earthR = Math.min(W,H)*EARTH_R_RATIO;
+}
+
+// L0 ─ Absolute black deep-space void ─────────────
+function buildL0(){
+  const cx = makeLayer('l0');
+  updateEarthGeo();
+  // Pure black everywhere
+  cx.fillStyle = '#000000';
+  cx.fillRect(0,0,W,H);
+  // Faint cosmic microwave background warmth (< 1%)
+  for(let i=0;i<3;i++){
+    const g=cx.createRadialGradient(rand(0,W),rand(0,H),0,rand(0,W),rand(0,H),maxDim*rand(0.3,0.7));
+    g.addColorStop(0,`rgba(15,8,30,0.03)`);
+    g.addColorStop(0.5,`rgba(10,5,20,0.01)`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=g; cx.fillRect(0,0,W,H);
+  }
+}
+
+// L1 ─ Deep space: nebulae + ISM + gravitational lens Einstein rings ─
+function buildL1(){
+  const cx = makeLayer('l1');
+  updateEarthGeo();
+
+  // --- HII Rose-Red Emission Regions (ionized hydrogen) ---
+  const hiiZones = [
+    {x:0.08,y:0.25,r:0.35},{x:0.15,y:0.30,r:0.28},{x:0.05,y:0.20,r:0.22},
+    {x:0.22,y:0.18,r:0.30},{x:0.12,y:0.38,r:0.25},{x:0.28,y:0.28,r:0.20},
+    {x:0.18,y:0.15,r:0.18},{x:0.08,y:0.42,r:0.22}
+  ];
+  hiiZones.forEach(z=>{
+    const g=cx.createRadialGradient(z.x*W,z.y*H,0,z.x*W,z.y*H,z.r*maxDim);
+    g.addColorStop(0, rgbaStr(H_ALPHA_RED,0.08));
+    g.addColorStop(0.2, rgbaStr([220,50,90],0.05));
+    g.addColorStop(0.45, rgbaStr([180,30,60],0.025));
+    g.addColorStop(0.7, rgbaStr([80,15,25],0.008));
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    cx.fillStyle=g; cx.fillRect(0,0,W,H);
+  });
+
+  // HII filamentary detail — thin curved strands
+  for(let i=0;i<30;i++){
+    const sx=rand(0.03,0.35)*W, sy=rand(0.10,0.48)*H;
+    cx.beginPath(); cx.moveTo(sx,sy);
+    const cp1x=sx+rand(-180,180), cp1y=sy+rand(-100,100);
+    const cp2x=sx+rand(-200,200), cp2y=sy+rand(-80,120);
+    cx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,sx+rand(-150,150),sy+rand(-90,130));
+    cx.lineWidth=rand(0.5,2.5);
+    cx.strokeStyle=`rgba(255,50,90,${rand(0.01,0.04)})`;
+    cx.lineCap='round'; cx.stroke();
+    cx.lineWidth=rand(4,16);
+    cx.strokeStyle=`rgba(200,30,60,${rand(0.003,0.01)})`;
+    cx.stroke();
+  }
+
+  // --- Dark Globules (Bok globules) ---
+  const globules=[
+    {x:0.25,y:0.35,r:0.06},{x:0.30,y:0.28,r:0.04},{x:0.18,y:0.32,r:0.05},
+    {x:0.22,y:0.42,r:0.035},{x:0.10,y:0.26,r:0.045},{x:0.32,y:0.38,r:0.03},
+    {x:0.14,y:0.19,r:0.04},{x:0.27,y:0.22,r:0.032}
+  ];
+  globules.forEach(gb=>{
+    const g=cx.createRadialGradient(gb.x*W,gb.y*H,0,gb.x*W,gb.y*H,gb.r*maxDim);
+    g.addColorStop(0,'rgba(0,0,0,0.55)');
+    g.addColorStop(0.35,'rgba(0,0,0,0.35)');
+    g.addColorStop(0.7,'rgba(0,0,0,0.12)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=g; cx.fillRect(gb.x*W-gb.r*maxDim,gb.y*H-gb.r*maxDim,gb.r*maxDim*2,gb.r*maxDim*2);
+  });
+
+  // Irregular dark dust lanes
+  cx.globalCompositeOperation='destination-out';
+  for(let i=0;i<12;i++){
+    cx.beginPath();
+    const sx=rand(0.04,0.40)*W, sy=rand(0.12,0.50)*H;
+    cx.moveTo(sx,sy);
+    cx.bezierCurveTo(sx+rand(-200,200),sy+rand(-120,120),sx+rand(-250,250),sy+rand(-100,100),sx+rand(-180,180),sy+rand(-80,140));
+    cx.lineWidth=rand(2,18);
+    cx.strokeStyle=`rgba(0,0,0,${rand(0.25,0.6)})`;
+    cx.lineCap='round'; cx.stroke();
+    cx.lineWidth=rand(8,40);
+    cx.strokeStyle=`rgba(0,0,0,${rand(0.05,0.15)})`;
+    cx.stroke();
+  }
+  cx.globalCompositeOperation='source-over';
+
+  // --- Supernova Remnants (filamentary shell structure) ---
+  const snrZones=[
+    {x:0.35,y:0.20,r:0.25},{x:0.05,y:0.08,r:0.20},{x:0.40,y:0.35,r:0.18}
+  ];
+  snrZones.forEach(sn=>{
+    // Outer shock front — [OIII] cyan-blue filaments
+    for(let i=0;i<22;i++){
+      const a=rand(0,Math.PI*2), ar=sn.r*maxDim*rand(0.55,1.05);
+      const px=sn.x*W+Math.cos(a)*ar, py=sn.y*H+Math.sin(a)*ar;
+      const la=rand(0.04,0.22); // arc length
+      cx.beginPath();
+      cx.arc(sn.x*W,sn.y*H,ar,a,a+la);
+      cx.lineWidth=rand(0.4,1.6);
+      cx.strokeStyle=`rgba(40,220,200,${rand(0.02,0.07)})`; // [OIII] cyan
+      cx.stroke();
+      // faint Hα inner filaments
+      cx.beginPath();
+      cx.arc(sn.x*W,sn.y*H,ar*rand(0.3,0.7),a,a+la*0.6);
+      cx.lineWidth=rand(0.3,1.0);
+      cx.strokeStyle=`rgba(255,50,80,${rand(0.015,0.05)})`;
+      cx.stroke();
+    }
+    // Central diffuse glow
+    const g=cx.createRadialGradient(sn.x*W,sn.y*H,0,sn.x*W,sn.y*H,sn.r*maxDim*0.8);
+    g.addColorStop(0,`rgba(60,30,90,0.04)`);
+    g.addColorStop(0.3,`rgba(40,20,80,0.02)`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=g; cx.fillRect(sn.x*W-sn.r*maxDim,sn.y*H-sn.r*maxDim,sn.r*maxDim*2,sn.r*maxDim*2);
+  });
+
+  // --- Blue X-ray / synchrotron halos ---
+  const blueZones=[
+    {x:0.06,y:0.30,r:0.42},{x:0.20,y:0.22,r:0.35},{x:0.10,y:0.35,r:0.38},
+    {x:0.25,y:0.32,r:0.30},{x:0.04,y:0.18,r:0.28},{x:0.16,y:0.12,r:0.26}
+  ];
+  blueZones.forEach(z=>{
+    const g=cx.createRadialGradient(z.x*W,z.y*H,0,z.x*W,z.y*H,z.r*maxDim);
+    g.addColorStop(0, rgbaStr(KLEIN_BLUE,0.10));
+    g.addColorStop(0.25, rgbaStr([10,55,180],0.06));
+    g.addColorStop(0.5, rgbaStr([15,40,130],0.025));
+    g.addColorStop(0.75, rgbaStr([8,20,70],0.006));
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=g; cx.fillRect(0,0,W,H);
+  });
+
+  // Additional blue fine filaments
+  for(let i=0;i<40;i++){
+    const wx=rand(0.02,0.40)*W, wy=rand(0.08,0.50)*H, wr=rand(15,140);
+    const g=cx.createRadialGradient(wx,wy,0,wx,wy,wr);
+    g.addColorStop(0, rgbaStr(KLEIN_BLUE,rand(0.015,0.06)));
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=g; cx.fillRect(wx-wr,wy-wr,wr*2,wr*2);
+  }
+
+  // --- Purple nebula mixing zones ---
+  const purpleZones=[
+    {x:0.28,y:0.38,r:0.33},{x:0.32,y:0.30,r:0.28},{x:0.20,y:0.40,r:0.30},
+    {x:0.36,y:0.25,r:0.26}
+  ];
+  purpleZones.forEach(z=>{
+    const g=cx.createRadialGradient(z.x*W,z.y*H,0,z.x*W,z.y*H,z.r*maxDim);
+    g.addColorStop(0, rgbaStr(NEBULA_PURPLE,0.08));
+    g.addColorStop(0.3, rgbaStr(NEBULA_PURPLE,0.04));
+    g.addColorStop(0.6, rgbaStr([50,25,110],0.015));
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=g; cx.fillRect(0,0,W,H);
+  });
+
+  // --- Gravitational Lens Einstein Rings ---
+  // Distant lensed galaxy arcs (top-left deep space)
+  const lensCenters=[
+    {x:0.12,y:0.28, rArc:0.08, width:0.016},
+    {x:0.22,y:0.15, rArc:0.10, width:0.012},
+    {x:0.08,y:0.16, rArc:0.065, width:0.014},
+  ];
+  lensCenters.forEach(lc=>{
+    const lx=lc.x*W, ly=lc.y*H;
+    const arcR=lc.r*maxDim;
+    // Almost-complete ring (350°)
+    const startA=rand(0,Math.PI*2);
+    const sweep=Math.PI*2*rand(0.88,0.97);
+    // Outer arc
+    cx.beginPath();
+    cx.arc(lx,ly,arcR,startA,startA+sweep);
+    cx.lineWidth=lc.width*maxDim*0.6;
+    cx.strokeStyle=`rgba(140,180,230,${rand(0.04,0.08)})`;
+    cx.stroke();
+    // Inner ghost arc
+    cx.beginPath();
+    cx.arc(lx,ly,arcR*0.75,startA+0.2,startA+sweep-0.2);
+    cx.lineWidth=lc.width*maxDim*0.35;
+    cx.strokeStyle=`rgba(120,150,220,${rand(0.03,0.06)})`;
+    cx.stroke();
+    // Lens galaxy glow at center
+    const gl=cx.createRadialGradient(lx,ly,0,lx,ly,arcR*0.3);
+    gl.addColorStop(0,`rgba(255,220,150,${rand(0.04,0.07)})`);
+    gl.addColorStop(0.5,`rgba(200,160,100,${rand(0.015,0.03)})`);
+    gl.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=gl; cx.fillRect(lx-arcR*0.4,ly-arcR*0.4,arcR*0.8,arcR*0.8);
+    // Einstein cross points (4 bright spots)
+    for(let q=0;q<4;q++){
+      const qa=startA+q*Math.PI/2+rand(-0.08,0.08);
+      const qr=arcR*(0.88+rand(-0.04,0.04));
+      const qx=lx+Math.cos(qa)*qr, qy=ly+Math.sin(qa)*qr;
+      const qg=cx.createRadialGradient(qx,qy,0,qx,qy,arcR*0.04);
+      qg.addColorStop(0,`rgba(220,230,255,${rand(0.06,0.12)})`);
+      qg.addColorStop(1,'rgba(0,0,0,0)');
+      cx.fillStyle=qg; cx.fillRect(qx-arcR*0.06,qy-arcR*0.06,arcR*0.12,arcR*0.12);
+    }
+  });
+
+  // --- Distant galaxies (small ellipses, spiral hints) ---
+  for(let i=0;i<15;i++){
+    const gx=rand(0.04,0.38)*W, gy=rand(0.12,0.50)*H;
+    const gr=rand(4,18);
+    const ga=rand(0,Math.PI);
+    cx.save();
+    cx.translate(gx,gy); cx.rotate(ga);
+    const gg=cx.createRadialGradient(0,0,0,0,0,gr);
+    const gc=rand(0.15,0.5);
+    gg.addColorStop(0,`rgba(200,180,220,${gc*0.5})`);
+    gg.addColorStop(0.5,`rgba(140,120,180,${gc*0.2})`);
+    gg.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=gg;
+    cx.beginPath(); cx.ellipse(0,0,gr,gr*rand(0.15,0.4),0,0,Math.PI*2); cx.fill();
+    cx.restore();
+  }
+}
+
+// L2 ─ 8000 stars: 7 spectral types (O B A F G K M + brown dwarfs) ─
+function buildL2(){
+  const cx = makeLayer('l2');
+  dimStars8k = [];
+
+  const starTypes = [
+    // {type, tempMin, tempMax, fraction, sizeRange, colorFunc}
+    {t:'O', tMin:30000,tMax:50000,frac:0.0002,sr:[1.4,2.0],cf:()=>[170,190,255]},
+    {t:'B', tMin:10000,tMax:30000,frac:0.0013,sr:[1.1,1.6],cf:()=>[180,210,255]},
+    {t:'A', tMin:7500,tMax:10000,frac:0.006,sr:[0.9,1.4],cf:()=>[200,215,245]},
+    {t:'F', tMin:6000,tMax:7500,frac:0.03,sr:[0.7,1.2],cf:()=>[235,225,210]},
+    {t:'G', tMin:5200,tMax:6000,frac:0.076,sr:[0.5,1.0],cf:()=>[250,235,200]},
+    {t:'K', tMin:3700,tMax:5200,frac:0.121,sr:[0.35,0.8],cf:()=>[255,190,130]},
+    {t:'M', tMin:2400,tMax:3700,frac:0.762,sr:[0.2,0.55],cf:()=>[255,140,80]},
+    {t:'BD',tMin:800,tMax:2400,frac:0.003,sr:[0.12,0.30],cf:()=>[120,50,30]}, // brown dwarf
+  ];
+
+  const total=8000;
+  let accFrac=0;
+  const typeCounts=starTypes.map(st=>{
+    const n=Math.round(total*st.frac);
+    accFrac+=st.frac;
+    return n;
+  });
+  // Adjust last to ensure total=8000
+  const sum=typeCounts.reduce((a,b)=>a+b,0);
+  typeCounts[typeCounts.length-1]+=(total-sum);
+
+  for(let ti=0;ti<starTypes.length;ti++){
+    const st=starTypes[ti];
+    for(let i=0;i<typeCounts[ti];i++){
+      const mag=rand(3,6.5);
+      const size=lerp(st.sr[1],st.sr[0],(mag-3)/3.5)*(0.6+Math.random()*0.8);
+      const rgb=st.cf().map(v=>clamp(v+rand(-15,15),0,255));
+      const alpha=lerp(0.18,0.85,(6.5-mag)/3.5);
+      const s={x:Math.random()*W, y:Math.random()*H, size, rgb, alpha, type:st.t};
+      dimStars8k.push(s);
+      // Earth occlusion check — stars behind Earth are dimmed
+      const dEarth=dist(s.x,s.y,earthCX,earthCY);
+      let finalAlpha=alpha;
+      if(dEarth<earthR*1.05){
+        finalAlpha=alpha*0.08; // behind Earth glow
+      }
+      if(finalAlpha<0.02) continue;
+      cx.beginPath();
+      cx.arc(s.x,s.y,Math.max(size/2,0.15),0,Math.PI*2);
+      cx.fillStyle=`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${finalAlpha})`;
+      cx.fill();
+    }
+  }
+}
+
+// L3 ─ Earth system: Earth disc + Moon + Van Allen belts + airglow + terminator + cities + aurora + typhoons ─
+function buildL3(){
+  const cx = makeLayer('l3');
+  updateEarthGeo();
+
+  // --- Van Allen radiation belts (outer, larger than Earth) ---
+  const vanAllenOuterRX=earthR*1.8, vanAllenOuterRY=earthR*1.1;
+  const vaGrad=cx.createRadialGradient(earthCX,earthCY,earthR*0.95,earthCX,earthCY,earthR*2.0);
+  vaGrad.addColorStop(0,'rgba(0,0,0,0)');
+  vaGrad.addColorStop(0.25,'rgba(60,120,255,0.04)');
+  vaGrad.addColorStop(0.45,'rgba(40,80,200,0.06)');
+  vaGrad.addColorStop(0.6,'rgba(30,50,180,0.03)');
+  vaGrad.addColorStop(0.8,'rgba(15,25,120,0.01)');
+  vaGrad.addColorStop(1,'rgba(0,0,0,0)');
+  cx.fillStyle=vaGrad;
+  cx.beginPath(); cx.ellipse(earthCX,earthCY,vanAllenOuterRX,vanAllenOuterRY,0,0,Math.PI*2); cx.fill();
+
+  // Inner belt
+  const vaInner=cx.createRadialGradient(earthCX,earthCY,earthR*0.50,earthCX,earthCY,earthR*1.25);
+  vaInner.addColorStop(0,'rgba(0,0,0,0)');
+  vaInner.addColorStop(0.3,'rgba(80,140,255,0.03)');
+  vaInner.addColorStop(0.7,'rgba(60,100,220,0.05)');
+  vaInner.addColorStop(1,'rgba(0,0,0,0)');
+  cx.fillStyle=vaInner;
+  cx.beginPath(); cx.ellipse(earthCX,earthCY,earthR*1.25,earthR*0.75,0,0,Math.PI*2); cx.fill();
+
+  // --- Atmosphere & Rayleigh scattering rim ---
+  const atmoGrad=cx.createRadialGradient(earthCX,earthCY,earthR*0.92,earthCX,earthCY,earthR*1.08);
+  atmoGrad.addColorStop(0,'rgba(0,0,0,0)');
+  atmoGrad.addColorStop(0.35, 'rgba(30,120,220,0.08)');
+  atmoGrad.addColorStop(0.55, 'rgba(80,160,240,0.15)');
+  atmoGrad.addColorStop(0.7, 'rgba(120,190,250,0.12)');
+  atmoGrad.addColorStop(0.85, 'rgba(60,140,230,0.05)');
+  atmoGrad.addColorStop(1,'rgba(0,0,0,0)');
+  cx.fillStyle=atmoGrad;
+  cx.beginPath(); cx.arc(earthCX,earthCY,earthR*1.08,0,Math.PI*2); cx.fill();
+
+  // --- Ocean / base Earth disc (Klein blue) ---
+  const oceanGrad=cx.createRadialGradient(earthCX-earthR*0.15,earthCY-earthR*0.1,0,earthCX,earthCY,earthR);
+  oceanGrad.addColorStop(0, rgbaStr([20,70,200],1));
+  oceanGrad.addColorStop(0.4, rgbaStr(KLEIN_BLUE,1));
+  oceanGrad.addColorStop(0.7, rgbaStr([0,30,120],1));
+  oceanGrad.addColorStop(1, rgbaStr([0,15,60],1));
+  cx.fillStyle=oceanGrad;
+  cx.beginPath(); cx.arc(earthCX,earthCY,earthR,0,Math.PI*2); cx.fill();
+
+  // --- Simplified continent shapes (emerald green) ---
+  cx.save();
+  cx.beginPath(); cx.arc(earthCX,earthCY,earthR,0,Math.PI*2); cx.clip();
+
+  // Continent blobs — approximate shapes
+  const continents=[
+    // Eurasia-like
+    {cx:earthCX-earthR*0.05,cy:earthCY-earthR*0.2,rx:earthR*0.55,ry:earthR*0.4,rot:0.1},
+    {cx:earthCX+earthR*0.15,cy:earthCY-earthR*0.3,rx:earthR*0.35,ry:earthR*0.28,rot:-0.2},
+    // Africa-like
+    {cx:earthCX-earthR*0.05,cy:earthCY+earthR*0.08,rx:earthR*0.22,ry:earthR*0.45,rot:0.05},
+    // North America
+    {cx:earthCX-earthR*0.30,cy:earthCY-earthR*0.35,rx:earthR*0.30,ry:earthR*0.35,rot:-0.3},
+    // South America
+    {cx:earthCX-earthR*0.25,cy:earthCY+earthR*0.30,rx:earthR*0.15,ry:earthR*0.25,rot:0.15},
+    // Australia
+    {cx:earthCX+earthR*0.25,cy:earthCY+earthR*0.22,rx:earthR*0.10,ry:earthR*0.12,rot:0},
+    // Antarctica
+    {cx:earthCX+earthR*0.05,cy:earthCY+earthR*0.65,rx:earthR*0.40,ry:earthR*0.18,rot:0},
+  ];
+  continents.forEach(ct=>{
+    const cg=cx.createRadialGradient(ct.cx,ct.cy,0,ct.cx,ct.cy,Math.max(ct.rx,ct.ry));
+    cg.addColorStop(0, rgbaStr([30,140,60],0.85));
+    cg.addColorStop(0.5, rgbaStr([20,100,40],0.7));
+    cg.addColorStop(1, rgbaStr([10,60,20],0.3));
+    cx.fillStyle=cg;
+    cx.beginPath();
+    cx.ellipse(ct.cx,ct.cy,ct.rx,ct.ry,ct.rot,0,Math.PI*2);
+    cx.fill();
+    // Fractal coastline detail
+    for(let j=0;j<5;j++){
+      const fx=ct.cx+rand(-ct.rx*0.7,ct.rx*0.7);
+      const fy=ct.cy+rand(-ct.ry*0.7,ct.ry*0.7);
+      const fr=rand(ct.rx*0.1,ct.rx*0.3);
+      const fg=cx.createRadialGradient(fx,fy,0,fx,fy,fr);
+      fg.addColorStop(0, rgbaStr([25,120,50],rand(0.4,0.7)));
+      fg.addColorStop(1,'rgba(0,0,0,0)');
+      cx.fillStyle=fg;
+      cx.beginPath(); cx.arc(fx,fy,fr,0,Math.PI*2); cx.fill();
+    }
+  });
+
+  cx.restore();
+
+  // --- Terminator (day/night boundary — golden-red burning band) ---
+  // Simulated as a gradient overlay across the Earth disc
+  // Day side: left; night side: right; terminator: diagonal band
+  cx.save();
+  cx.beginPath(); cx.arc(earthCX,earthCY,earthR,0,Math.PI*2); cx.clip();
+
+  // Night shadow (right portion)
+  const nightGrad=cx.createLinearGradient(earthCX-earthR,earthCY,earthCX+earthR*0.6,earthCY);
+  nightGrad.addColorStop(0,'rgba(0,0,0,0)');
+  nightGrad.addColorStop(0.2,'rgba(0,0,8,0.05)');
+  nightGrad.addColorStop(0.4,`rgba(220,100,20,0.18)`); // terminator gold-red
+  nightGrad.addColorStop(0.5,`rgba(255,140,40,0.25)`); // peak burning
+  nightGrad.addColorStop(0.55,`rgba(200,60,10,0.20)`);
+  nightGrad.addColorStop(0.65,'rgba(10,5,30,0.55)');
+  nightGrad.addColorStop(0.85,'rgba(5,3,20,0.78)');
+  nightGrad.addColorStop(1,'rgba(2,1,15,0.92)');
+  cx.fillStyle=nightGrad; cx.fillRect(earthCX-earthR,earthCY-earthR,earthR*2,earthR*2);
+
+  // Terminator cloud shadow striations (100km scale roughness)
+  for(let i=0;i<40;i++){
+    const tx=earthCX+earthR*rand(-0.15,0.35);
+    const ty=earthCY+earthR*rand(-0.7,0.7);
+    const tw=rand(3,15), th=rand(15,50);
+    cx.fillStyle=`rgba(180,60,10,${rand(0.04,0.13)})`;
+    cx.beginPath(); cx.ellipse(tx,ty,tw,th,rand(-0.3,0.3),0,Math.PI*2); cx.fill();
+  }
+
+  cx.restore();
+
+  // --- Night-side city lights ---
+  cx.save();
+  cx.beginPath(); cx.arc(earthCX,earthCY,earthR,0,Math.PI*2); cx.clip();
+
+  // East Asia cool white clusters
+  const asianCities=[
+    {x:earthCX+earthR*0.08,y:earthCY-earthR*0.35},{x:earthCX+earthR*0.15,y:earthCY-earthR*0.28},
+    {x:earthCX+earthR*0.12,y:earthCY-earthR*0.40},{x:earthCX+earthR*0.05,y:earthCY-earthR*0.32},
+    {x:earthCX+earthR*0.18,y:earthCY-earthR*0.22},{x:earthCX+earthR*0.10,y:earthCY-earthR*0.18},
+    {x:earthCX+earthR*0.20,y:earthCY-earthR*0.35},{x:earthCX+earthR*0.25,y:earthCY-earthR*0.30},
+  ];
+  asianCities.forEach(cp=>{
+    const nodes=randInt(3,8);
+    for(let j=0;j<nodes;j++){
+      const nx=cp.x+rand(-12,12), ny=cp.y+rand(-8,8);
+      const ng=cx.createRadialGradient(nx,ny,0,nx,ny,rand(2,8));
+      ng.addColorStop(0,`rgba(220,225,255,${rand(0.4,0.7)})`);
+      ng.addColorStop(0.5,`rgba(200,210,240,${rand(0.2,0.4)})`);
+      ng.addColorStop(1,'rgba(0,0,0,0)');
+      cx.fillStyle=ng;
+      cx.fillRect(nx-8,ny-8,16,16);
+    }
+  });
+
+  // Europe cool white clusters
+  const euCities=[
+    {x:earthCX-earthR*0.15,y:earthCY-earthR*0.45},{x:earthCX-earthR*0.10,y:earthCY-earthR*0.40},
+    {x:earthCX-earthR*0.20,y:earthCY-earthR*0.42},{x:earthCX-earthR*0.08,y:earthCY-earthR*0.48},
+    {x:earthCX-earthR*0.12,y:earthCY-earthR*0.35},{x:earthCX-earthR*0.18,y:earthCY-earthR*0.32},
+  ];
+  euCities.forEach(cp=>{
+    const nodes=randInt(3,7);
+    for(let j=0;j<nodes;j++){
+      const nx=cp.x+rand(-10,10), ny=cp.y+rand(-7,7);
+      const ng=cx.createRadialGradient(nx,ny,0,nx,ny,rand(2,7));
+      ng.addColorStop(0,`rgba(230,235,255,${rand(0.35,0.65)})`);
+      ng.addColorStop(1,'rgba(0,0,0,0)');
+      cx.fillStyle=ng;
+      cx.fillRect(nx-7,ny-7,14,14);
+    }
+  });
+
+  // Americas warm yellow clusters
+  const amCities=[
+    {x:earthCX-earthR*0.35,y:earthCY-earthR*0.38},{x:earthCX-earthR*0.38,y:earthCY-earthR*0.30},
+    {x:earthCX-earthR*0.30,y:earthCY-earthR*0.42},{x:earthCX-earthR*0.28,y:earthCY-earthR*0.28},
+    {x:earthCX-earthR*0.33,y:earthCY-earthR*0.20},{x:earthCX-earthR*0.22,y:earthCY+earthR*0.32},
+  ];
+  amCities.forEach(cp=>{
+    const nodes=randInt(3,6);
+    for(let j=0;j<nodes;j++){
+      const nx=cp.x+rand(-8,8), ny=cp.y+rand(-6,6);
+      const ng=cx.createRadialGradient(nx,ny,0,nx,ny,rand(1.5,5));
+      ng.addColorStop(0,`rgba(255,210,130,${rand(0.35,0.6)})`);
+      ng.addColorStop(1,'rgba(0,0,0,0)');
+      cx.fillStyle=ng;
+      cx.fillRect(nx-5,ny-5,10,10);
+    }
+  });
+
+  // Africa warm yellow clusters
+  const afCities=[
+    {x:earthCX-earthR*0.05,y:earthCY},{x:earthCX-earthR*0.02,y:earthCY+earthR*0.10},
+    {x:earthCX-earthR*0.08,y:earthCY+earthR*0.18},{x:earthCX+earthR*0.02,y:earthCY+earthR*0.05},
+    {x:earthCX-earthR*0.10,y:earthCY-earthR*0.08},
+  ];
+  afCities.forEach(cp=>{
+    const nodes=randInt(2,5);
+    for(let j=0;j<nodes;j++){
+      const nx=cp.x+rand(-6,6), ny=cp.y+rand(-5,5);
+      const ng=cx.createRadialGradient(nx,ny,0,nx,ny,rand(1.5,4));
+      ng.addColorStop(0,`rgba(255,200,110,${rand(0.3,0.55)})`);
+      ng.addColorStop(1,'rgba(0,0,0,0)');
+      cx.fillStyle=ng;
+      cx.fillRect(nx-4,ny-4,8,8);
+    }
+  });
+
+  cx.restore();
+
+  // --- Aurora oval rings (emerald green + magenta) ---
+  // North polar aurora
+  cx.save();
+  cx.beginPath(); cx.arc(earthCX,earthCY,earthR*1.02,0,Math.PI*2); cx.clip();
+
+  const auroraCY=earthCY-earthR*0.55;
+  const auroraRX=earthR*0.55, auroraRY=earthR*0.18;
+
+  // Green band
+  for(let i=0;i<30;i++){
+    const aa=rand(0,Math.PI*2);
+    const arx=auroraRX+rand(-0.06,0.06)*earthR;
+    const ary=auroraRY+rand(-0.04,0.04)*earthR;
+    const ax=earthCX+Math.cos(aa)*arx;
+    const ay=auroraCY+Math.sin(aa)*ary;
+    const ag=cx.createRadialGradient(ax,ay,0,ax,ay,rand(8,30));
+    ag.addColorStop(0,`rgba(100,255,150,${rand(0.15,0.35)})`);
+    ag.addColorStop(0.4,`rgba(60,220,100,${rand(0.08,0.18)})`);
+    ag.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=ag;
+    cx.fillRect(ax-35,ay-35,70,70);
+  }
+
+  // Magenta patches (excited N2)
+  for(let i=0;i<15;i++){
+    const aa=rand(0,Math.PI*2);
+    const arx=auroraRX+rand(-0.03,0.08)*earthR;
+    const ary=auroraRY+rand(-0.05,0.03)*earthR;
+    const ax=earthCX+Math.cos(aa)*arx;
+    const ay=auroraCY+Math.sin(aa)*ary;
+    const ag=cx.createRadialGradient(ax,ay,0,ax,ay,rand(5,18));
+    ag.addColorStop(0,`rgba(255,60,200,${rand(0.10,0.25)})`);
+    ag.addColorStop(0.5,`rgba(200,30,140,${rand(0.05,0.12)})`);
+    ag.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=ag;
+    cx.fillRect(ax-20,ay-20,40,40);
+  }
+
+  // South polar aurora (fainter)
+  const saCY=earthCY+earthR*0.55;
+  for(let i=0;i<12;i++){
+    const aa=rand(0,Math.PI*2);
+    const arx=auroraRX*0.8, ary=auroraRY*0.7;
+    const ax=earthCX+Math.cos(aa)*arx;
+    const ay=saCY+Math.sin(aa)*ary;
+    const ag=cx.createRadialGradient(ax,ay,0,ax,ay,rand(4,15));
+    ag.addColorStop(0,`rgba(100,240,140,${rand(0.06,0.15)})`);
+    ag.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=ag;
+    cx.fillRect(ax-16,ay-16,32,32);
+  }
+
+  cx.restore();
+
+  // --- White vortex typhoon clouds ---
+  const typhoons=[
+    {x:earthCX+earthR*0.15,y:earthCY-earthR*0.42,size:earthR*0.08,arms:5},
+    {x:earthCX-earthR*0.28,y:earthCY+earthR*0.25,size:earthR*0.06,arms:4},
+    {x:earthCX+earthR*0.05,y:earthCY+earthR*0.20,size:earthR*0.05,arms:4},
+  ];
+  typhoons.forEach(ty=>{
+    // Central eye
+    const eg=cx.createRadialGradient(ty.x,ty.y,0,ty.x,ty.y,ty.size*0.15);
+    eg.addColorStop(0,'rgba(255,255,255,0.02)');
+    eg.addColorStop(1,'rgba(255,255,255,0)');
+    cx.fillStyle=eg; cx.fillRect(ty.x-ty.size,ty.y-ty.size,ty.size*2,ty.size*2);
+
+    // Spiral arms
+    for(let a=0;a<ty.arms;a++){
+      const baseAngle=(a/ty.arms)*Math.PI*2;
+      for(let j=0;j<20;j++){
+        const t=j/20;
+        const spiralAngle=baseAngle+t*3.5;
+        const sr=ty.size*t*0.85;
+        const sx=ty.x+Math.cos(spiralAngle)*sr;
+        const sy=ty.y+Math.sin(spiralAngle)*sr;
+        const sw=ty.size*lerp(0.04,0.12,t);
+        const sg=cx.createRadialGradient(sx,sy,0,sx,sy,sw);
+        sg.addColorStop(0,`rgba(255,255,255,${lerp(0.18,0.04,t)})`);
+        sg.addColorStop(0.5,`rgba(240,245,255,${lerp(0.10,0.02,t)})`);
+        sg.addColorStop(1,'rgba(255,255,255,0)');
+        cx.fillStyle=sg;
+        cx.fillRect(sx-sx*0.3,sy-sx*0.3,sx*0.6,sx*0.6);
+      }
+    }
+  });
+
+  // --- Sodium airglow layer (589nm, thin orange-yellow ring at ~90km) ---
+  cx.save();
+  cx.beginPath(); cx.arc(earthCX,earthCY,earthR*1.10,0,Math.PI*2); cx.clip();
+  for(let i=0;i<18;i++){
+    const aa=rand(0,Math.PI*2);
+    const ar=earthR*(1.02+rand(0.01,0.05));
+    const ax=earthCX+Math.cos(aa)*ar, ay=earthCY+Math.sin(aa)*ar;
+    const ag=cx.createRadialGradient(ax,ay,0,ax,ay,rand(4,15));
+    ag.addColorStop(0,`rgba(255,180,20,${rand(0.06,0.14)})`);
+    ag.addColorStop(0.5,`rgba(240,150,10,${rand(0.03,0.07)})`);
+    ag.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=ag;
+    cx.fillRect(ax-18,ay-18,36,36);
+  }
+  cx.restore();
+
+  // --- Oxygen green-blue airglow (chemiluminescence, thinner above Na layer) ---
+  cx.save();
+  cx.beginPath(); cx.arc(earthCX,earthCY,earthR*1.12,0,Math.PI*2); cx.clip();
+  for(let i=0;i<12;i++){
+    const aa=rand(0,Math.PI*2);
+    const ar=earthR*(1.03+rand(0.01,0.04));
+    const ax=earthCX+Math.cos(aa)*ar, ay=earthCY+Math.sin(aa)*ar;
+    const ag=cx.createRadialGradient(ax,ay,0,ax,ay,rand(3,12));
+    ag.addColorStop(0,`rgba(80,220,130,${rand(0.04,0.10)})`);
+    ag.addColorStop(0.5,`rgba(30,180,200,${rand(0.02,0.05)})`);
+    ag.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=ag;
+    cx.fillRect(ax-14,ay-14,28,28);
+  }
+  cx.restore();
+
+  // --- Moon (grey disc behind Earth, smaller) ---
+  const moonR=earthR*0.27;
+  const moonCX=earthCX-earthR*0.5, moonCY=earthCY-earthR*0.8;
+  // Moon surface
+  const moonGrad=cx.createRadialGradient(moonCX-moonR*0.1,moonCY-moonR*0.1,0,moonCX,moonCY,moonR);
+  moonGrad.addColorStop(0, 'rgba(200,195,180,0.7)');
+  moonGrad.addColorStop(0.3, 'rgba(170,165,150,0.55)');
+  moonGrad.addColorStop(0.6, 'rgba(130,125,110,0.35)');
+  moonGrad.addColorStop(0.85, 'rgba(90,85,75,0.15)');
+  moonGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  cx.fillStyle=moonGrad;
+  cx.beginPath(); cx.arc(moonCX,moonCY,moonR,0,Math.PI*2); cx.fill();
+
+  // Moon maria (dark patches)
+  for(let i=0;i<8;i++){
+    const mx=moonCX+rand(-moonR*0.5,moonR*0.5);
+    const my=moonCY+rand(-moonR*0.5,moonR*0.5);
+    const mr=rand(moonR*0.1,moonR*0.3);
+    if(dist(mx,my,moonCX,moonCY)>moonR*0.75) continue;
+    const mg=cx.createRadialGradient(mx,my,0,mx,my,mr);
+    mg.addColorStop(0,`rgba(100,95,85,${rand(0.15,0.3)})`);
+    mg.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=mg;
+    cx.beginPath(); cx.arc(mx,my,mr,0,Math.PI*2); cx.fill();
+  }
+
+  // Moon craters
+  for(let i=0;i<20;i++){
+    const cx2=moonCX+rand(-moonR*0.7,moonR*0.7);
+    const cy2=moonCY+rand(-moonR*0.7,moonR*0.7);
+    if(dist(cx2,cy2,moonCX,moonCY)>moonR*0.85) continue;
+    const cr=rand(1,4);
+    cx.strokeStyle=`rgba(150,145,130,${rand(0.15,0.3)})`;
+    cx.lineWidth=0.3;
+    cx.beginPath(); cx.arc(cx2,cy2,cr,0,Math.PI*2); cx.stroke();
+  }
+}
+
+// L4 ─ Star trail arcs (deep-space circumpolar) ────
+function buildL4(){
+  const cx = makeLayer('l4');
+  updateEarthGeo();
+  // Celestial pole in deep space (upper-left, away from Earth)
+  const poleX=W*0.15, poleY=H*0.12;
+  for(let i=0;i<120;i++){
+    const angle=rand(0,Math.PI*2);
+    const rStart=rand(60,maxDim*0.8);
+    const arcLen=rand(0.04,0.35);
+    const aDir=Math.random()<0.5?1:-1;
+    const aStart=angle, aEnd=angle+arcLen*aDir;
+    const rgb=pick([KLEIN_BLUE,NEBULA_PURPLE,D65_WHITE,[160,200,240],[240,180,130],[200,220,255]]);
+    const alpha=rand(0.02,0.10);
+    cx.beginPath();
+    cx.arc(poleX,poleY,rStart,Math.min(aStart,aEnd),Math.max(aStart,aEnd));
+    cx.lineWidth=rand(0.3,1.5);
+    cx.strokeStyle=`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`;
+    cx.stroke();
+    // Ghost halo
+    cx.beginPath();
+    cx.arc(poleX,poleY,rStart,Math.min(aStart,aEnd),Math.max(aStart,aEnd));
+    cx.lineWidth=rand(2,7);
+    cx.strokeStyle=`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha*0.15})`;
+    cx.stroke();
+  }
+}
+
+// L5 ─ Film grain / CCD texture overlay ───────────
+function buildL5(){
+  const cx = makeLayer('l5');
+  const imageData=cx.createImageData(W,H);
+  const d=imageData.data;
+  for(let i=0;i<d.length;i+=4){
+    const v=rand(-16,16);
+    d[i]=clamp(128+v,0,255);
+    d[i+1]=clamp(128+v+rand(-3,3),0,255);
+    d[i+2]=clamp(128+v+rand(-3,3),0,255);
+    d[i+3]=rand(4,18);
+  }
+  cx.putImageData(imageData,0,0);
+}
+
+// ═══════════════════════════════════════════════════
+// DYNAMIC DATA INITIALIZATION
+// ═══════════════════════════════════════════════════
+
+// ── Bright stars (1000, mag -1.5~3) ──────────────
+function initStars(){
+  brightStars=[]; spikeStars=[];
+  for(let i=0;i<1000;i++){
+    const mag=rand(-1.5,3);
+    const size=lerp(4,1,(mag+1.5)/4.5);
+    const phase=Math.random()*Math.PI*2;
+    const freq=0.5+Math.random()*3;
+    const colorTemp=rand(1800,50000);
+    let rgb;
+    if(colorTemp<3500)       rgb=[255,160+Math.random()*50,80+Math.random()*50];
+    else if(colorTemp<7000)  rgb=[245,235,215].map(v=>v+rand(-12,12));
+    else if(colorTemp<12000) rgb=[190,210,245].map(v=>v+rand(-12,12));
+    else if(colorTemp<30000) rgb=[150,170,230].map(v=>v+rand(-12,12));
+    else                     rgb=[160,180,245].map(v=>v+rand(-12,12));
+    rgb=rgb.map(v=>clamp(v,0,255));
+    brightStars.push({x:Math.random()*W,y:Math.random()*H,size,rgb,phase,freq,mag});
+  }
+  brightStars.sort((a,b)=>a.mag-b.mag);
+  spikeStars=brightStars.slice(0,150);
+}
+
+// ── Atmospheric Meteors (2-3 fireballs visible) ───
+function initMeteors(){
+  meteors=[];
+  for(let i=0;i<3;i++) spawnAtmoMeteor(true);
+}
+
+function spawnAtmoMeteor(initial){
+  // Entering tangent to atmosphere near Earth limb
+  const entryAngle=rand(-1.2,-0.4); // shallow entry angle
+  const speed=rand(4,10);
+  const vx=Math.cos(entryAngle)*speed, vy=Math.sin(entryAngle)*speed;
+  const life=rand(25,55);
+  // Spawn near Earth upper atmosphere
+  const x0=earthCX+Math.cos(entryAngle+Math.PI)*earthR*1.15;
+  const y0=earthCY+Math.sin(entryAngle+Math.PI)*earthR*1.15;
+  const particles=[];
+  for(let j=0;j<randInt(180,300);j++) particles.push({life:0,maxLife:rand(4,20),offset:rand(0,15),spreadX:0,spreadY:0});
+  meteors.push({
+    x:x0,y:y0,vx,vy,life,maxLife:life,age:initial?rand(0,life):0,particles,
+    headColor:[200,230,255], // ionization blue-white
+    tailColor:[100,220,80],  // plasma green-orange fragmentation
+    type:'atmo'
+  });
+}
+
+function drawAtmoMeteor(m){
+  const {x,y,vx,vy,age,maxLife,particles,headColor,tailColor}=m;
+  const progress=age/maxLife;
+  const alpha=progress<0.1?progress/0.1:progress>0.85?(1-progress)/0.15:1;
+  ctx.globalCompositeOperation='lighter';
+
+  // Plasma fragmentation tail — green-orange transitioning to blue-white
+  for(let i=0;i<particles.length;i++){
+    const p=particles[i];
+    p.life+=1;
+    if(p.life>p.maxLife){p.life=0;p.maxLife=rand(3,14);p.offset=rand(0,10);p.spreadX=rand(-3,3);p.spreadY=rand(-3,3);}
+    const pProg=p.life/p.maxLife;
+    const px=x-vx*(p.offset||0)-vx*p.life*0.6+p.spreadX;
+    const py=y-vy*(p.offset||0)-vy*p.life*0.6+p.spreadY;
+    if(dist(px,py,earthCX,earthCY)<earthR*0.9) continue; // below atmosphere
+    const pa=alpha*(1-pProg)*0.55;
+    if(pa<0.002) continue;
+    // Transition: head blue-white → mid green → tail orange
+    let col;
+    if(pProg<0.3) col=lerpColor(headColor,[120,240,180],pProg/0.3);
+    else col=lerpColor([120,240,180],tailColor,(pProg-0.3)/0.7);
+    ctx.fillStyle=`rgba(${col[0]},${col[1]},${col[2]},${pa})`;
+    const sz=lerp(1.5,0.2,pProg);
+    ctx.fillRect(px-sz/2,py-sz/2,sz,sz);
+  }
+
+  // Ionization flash head
+  if(alpha>0.01){
+    const g=ctx.createRadialGradient(x,y,0,x,y,12);
+    g.addColorStop(0,`rgba(200,230,255,${alpha*0.95})`);
+    g.addColorStop(0.25,`rgba(140,210,255,${alpha*0.6})`);
+    g.addColorStop(0.55,`rgba(80,200,100,${alpha*0.25})`);
+    g.addColorStop(0.8,`rgba(200,100,30,${alpha*0.08})`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g; ctx.fillRect(x-14,y-14,28,28);
+  }
+  ctx.globalCompositeOperation='source-over';
+}
+
+// ── Deep space meteors (5 ballistic trajectory types) ─
+function initDeepMeteors(){
+  deepMeteors=[];
+  const types=['fast','fragChain','retrograde','grazing','hypervelocity'];
+  const count=randInt(8,15);
+  for(let i=0;i<count;i++) spawnDeepMeteor(true);
+}
+
+function spawnDeepMeteor(initial){
+  const type=pick(['fast','fragChain','retrograde','grazing','hypervelocity']);
+  let speed, life, color, angle;
+  switch(type){
+    case 'fast':
+      speed=rand(12,25); life=rand(8,18); color=[[255,240,200],[255,150,50]]; angle=rand(-Math.PI*0.5,-Math.PI*0.05); break;
+    case 'fragChain':
+      speed=rand(5,12); life=rand(20,40); color=[[255,200,100],[200,80,30]]; angle=rand(-Math.PI*0.5,-Math.PI*0.05); break;
+    case 'retrograde':
+      speed=rand(8,18); life=rand(15,30); color=[[180,200,255],[100,50,200]]; angle=rand(Math.PI*0.7,Math.PI*0.95); break;
+    case 'grazing':
+      speed=rand(3,7); life=rand(30,60); color=[[255,220,160],[200,140,60]]; angle=rand(-0.15,0.15); break;
+    case 'hypervelocity':
+      speed=rand(30,60); life=rand(3,8); color=[[200,200,255],[80,80,255]]; angle=rand(-Math.PI*0.6,-Math.PI*0.1); break;
+  }
+  const vx=Math.cos(angle)*speed, vy=Math.sin(angle)*speed;
+  const x0=rand(0,W), y0=rand(0,H*0.5);
+  const particles=[];
+  const pCount=type==='hypervelocity'?randInt(30,60):type==='fragChain'?randInt(80,160):randInt(50,100);
+  for(let j=0;j<pCount;j++) particles.push({life:0,maxLife:rand(3,15)});
+  deepMeteors.push({
+    x:x0,y:y0,vx,vy,life,maxLife:life,age:initial?rand(0,life):0,particles,color,type,
+  });
+}
+
+function drawDeepMeteor(m){
+  const {x,y,vx,vy,age,maxLife,particles,color,type}=m;
+  const progress=age/maxLife;
+  const alpha=progress<0.08?progress/0.08:progress>0.88?(1-progress)/0.12:1;
+  // Off-screen cull
+  if(x<-30||x>W+30||y<-30||y>H+30) return;
+  ctx.globalCompositeOperation='lighter';
+
+  for(let i=0;i<particles.length;i++){
+    const p=particles[i];
+    p.life+=1;
+    if(p.life>p.maxLife){p.life=0;p.maxLife=rand(2,12);}
+    const pProg=p.life/p.maxLife;
+    let px,py;
+    if(type==='fragChain'){
+      // Fragment chain: pieces break off at intervals
+      const fragIdx=Math.floor(i/10);
+      px=x-vx*p.life*0.8+Math.sin(i*0.7)*(fragIdx+1)*1.2;
+      py=y-vy*p.life*0.8+Math.cos(i*0.7)*(fragIdx+1)*1.2;
+    }else{
+      px=x-vx*p.life*0.65; py=y-vy*p.life*0.65;
+    }
+    const pa=alpha*(1-pProg)*0.5;
+    if(pa<0.001) continue;
+    const col=lerpColor(color[0],color[1],pProg);
+    ctx.fillStyle=`rgba(${col[0]},${col[1]},${col[2]},${pa})`;
+    const sz=lerp(1.0,0.15,pProg);
+    ctx.fillRect(px-sz/2,py-sz/2,sz,sz);
+  }
+
+  // Head
+  if(alpha>0.005){
+    const g=ctx.createRadialGradient(x,y,0,x,y,type==='hypervelocity'?20:6);
+    g.addColorStop(0,`rgba(${color[0][0]},${color[0][1]},${color[0][2]},${alpha*0.85})`);
+    g.addColorStop(0.5,`rgba(${color[1][0]},${color[1][1]},${color[1][2]},${alpha*0.3})`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g; ctx.fillRect(x-22,y-22,44,44);
+  }
+  ctx.globalCompositeOperation='source-over';
+}
+
+// ── Diffraction cross spikes ─────────────────────
+function drawSpikes(s){
+  const twinkle=0.55+0.45*Math.sin(time*0.0004*s.freq+s.phase);
+  const alpha=twinkle*0.7;
+  if(alpha<0.04) return;
+  const {x,y,size,rgb}=s;
+  if(x<-15||x>W+15||y<-15||y>H+15) return;
+  const len=size*rand(4,9);
+  const w=size*0.22;
+  ctx.globalCompositeOperation='lighter';
+  [0,Math.PI/2,Math.PI/4,-Math.PI/4].forEach(a=>{
+    const rot=a+rand(-0.03,0.03);
+    const dx=Math.cos(rot)*len, dy=Math.sin(rot)*len;
+    const g=ctx.createLinearGradient(x-dx,y-dy,x+dx,y+dy);
+    g.addColorStop(0,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
+    g.addColorStop(0.35,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha*0.12})`);
+    g.addColorStop(0.5,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha*0.55})`);
+    g.addColorStop(0.65,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha*0.12})`);
+    g.addColorStop(1,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
+    ctx.strokeStyle=g; ctx.lineWidth=w; ctx.beginPath();
+    ctx.moveTo(x-dx,y-dy); ctx.lineTo(x+dx,y+dy); ctx.stroke();
+  });
+  ctx.globalCompositeOperation='source-over';
+}
+
+// ── Spark particles ──────────────────────────────
+function burstSparks(cx,cy,count){
+  const n=count||randInt(80,150);
+  for(let i=0;i<n;i++){
+    const a=rand(0,Math.PI*2), sp=rand(1.5,7);
+    sparkParticles.push({
+      x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,
+      life:rand(18,50),maxLife:rand(18,50),size:rand(1,3.5),
+      color:pick([GOLD_AMBER,[255,220,120],[255,200,60],[255,240,200]]),
+      gravity:0.03,
+    });
+  }
+}
+
+// ── Touch trails ─────────────────────────────────
+let activeTouches={};
+const TOUCH_TRAIL_MAX=80;
+
+function addTouchPoint(id,x,y){
+  if(!activeTouches[id]){activeTouches[id]=[];touchTrails.push(activeTouches[id]);}
+  const trail=activeTouches[id];
+  trail.push({x,y,age:0});
+  if(trail.length>TOUCH_TRAIL_MAX) trail.shift();
+}
+
+function updateTouchTrails(){
+  for(const key in activeTouches){
+    const trail=activeTouches[key];
+    for(let i=trail.length-1;i>=0;i--){
+      trail[i].age++;
+      if(trail[i].age>55) trail.splice(i,1);
+    }
+    if(trail.length===0) delete activeTouches[key];
+  }
+  touchTrails=touchTrails.filter(t=>t.length>0);
+}
+
+function drawTouchTrails(){
+  touchTrails.forEach(trail=>{
+    if(trail.length<2) return;
+    for(let i=1;i<trail.length;i++){
+      const p0=trail[i-1], p1=trail[i];
+      const alpha=clamp(1-p1.age/55,0,1)*0.55;
+      if(alpha<0.01) continue;
+      ctx.globalCompositeOperation='lighter';
+      ctx.beginPath(); ctx.moveTo(p0.x,p0.y); ctx.lineTo(p1.x,p1.y);
+      ctx.lineWidth=lerp(1.5,3,alpha);
+      ctx.strokeStyle=`rgba(255,200,60,${alpha})`; ctx.lineCap='round'; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p0.x,p0.y); ctx.lineTo(p1.x,p1.y);
+      ctx.lineWidth=lerp(5,10,alpha);
+      ctx.strokeStyle=`rgba(255,180,30,${alpha*0.25})`; ctx.lineCap='round'; ctx.stroke();
+      ctx.globalCompositeOperation='source-over';
+    }
+  });
+}
+
+// ── Lens flares ──────────────────────────────────
+function initFlareSpots(){
+  flareSpots=[];
+  for(let i=0;i<randInt(1,2);i++){
+    flareSpots.push({x:rand(W*0.1,W*0.8),y:rand(H*0.05,H*0.5),size:rand(25,60),phase:Math.random()*Math.PI*2});
+  }
+}
+
+function drawFlare(f){
+  if(f.x<-f.size||f.x>W+f.size||f.y<-f.size||f.y>H+f.size) return;
+  const shimmer=0.85+Math.sin(time*0.00003+f.phase)*0.15;
+  const alpha=rand(0.025,0.06)*shimmer;
+  const g=ctx.createRadialGradient(f.x,f.y,0,f.x,f.y,f.size);
+  g.addColorStop(0,`rgba(160,200,240,${alpha*0.5})`);
+  g.addColorStop(0.3,`rgba(80,120,200,${alpha*0.18})`);
+  g.addColorStop(0.7,`rgba(30,50,120,${alpha*0.03})`);
+  g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g; ctx.fillRect(f.x-f.size,f.y-f.size,f.size*2,f.size*2);
+}
+
+// ── Atmospheric refraction starlight dispersion ──
+function drawStarlightRefraction(){
+  // Prismatic dispersion stripes near Earth atmosphere rim
+  // Red-blue spectral banding from starlight passing through atmosphere
+  ctx.globalCompositeOperation='lighter';
+  for(let i=0;i<randomRefractionStars.length;i++){
+    const rs=randomRefractionStars[i];
+    const dx=earthCX-rs.x, dy=earthCY-rs.y;
+    const d=Math.hypot(dx,dy);
+    if(d<earthR*0.95||d>earthR*1.15) continue; // only near atmosphere rim
+    const alpha=clamp(1-(d-earthR*0.95)/(earthR*0.2),0,1)*0.4;
+    if(alpha<0.01) continue;
+    // Spectral dispersion: red shifted outward, blue inward
+    const nx=dx/d, ny=dy/d;
+    for(let s=0;s<12;s++){
+      const t=s/11;
+      const spread=lerp(6,0,t); // red spreads more
+      const sx=rs.x+nx*spread, sy=rs.y+ny*spread;
+      const hue=lerp(0,260,t); // red→blue
+      ctx.fillStyle=`hsla(${hue},80%,60%,${alpha*0.35})`;
+      ctx.fillRect(sx-0.6,sy-0.6,1.2,1.2);
+    }
+  }
+  ctx.globalCompositeOperation='source-over';
+}
+let randomRefractionStars=[];
+
+function initRefractionStars(){
+  randomRefractionStars=[];
+  for(let i=0;i<30;i++){
+    const a=rand(0,Math.PI*2);
+    const r=earthR*rand(0.92,1.18);
+    randomRefractionStars.push({x:earthCX+Math.cos(a)*r,y:earthCY+Math.sin(a)*r});
+  }
+}
+
+// ── Vignette ─────────────────────────────────────
+function drawVignette(){
+  const g=ctx.createRadialGradient(halfW,halfH,Math.min(W,H)*0.38,halfW,halfH,maxDim*0.82);
+  g.addColorStop(0,'rgba(0,0,0,0)');
+  g.addColorStop(0.45,'rgba(0,0,0,0)');
+  g.addColorStop(0.78,'rgba(0,0,0,0.30)');
+  g.addColorStop(1,'rgba(0,0,0,0.72)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+}
+
+// ── CCD noise ────────────────────────────────────
+function drawCCDNoise(){
+  const count=randInt(12,40);
+  ctx.globalCompositeOperation='lighter';
+  for(let i=0;i<count;i++){
+    const x=rand(0,W), y=rand(0,H);
+    const rgb=pick([[255,0,0],[0,255,0],[0,0,255],[255,255,255],[255,100,0]]);
+    ctx.fillStyle=`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${rand(0.10,0.40)})`;
+    ctx.fillRect(x,y,1,1);
+  }
+  ctx.globalCompositeOperation='source-over';
+}
+
+// ── Foreground ice crystals (cm-scale) ────────────
+let iceCrystals=[];
+function initIceCrystals(){
+  iceCrystals=[];
+  for(let i=0;i<12;i++){
+    iceCrystals.push({
+      x:rand(0,W), y:rand(0,H),
+      size:rand(2,8),
+      rot:rand(0,Math.PI*2),
+      rotSpeed:rand(-0.005,0.005),
+      alpha:rand(0.08,0.22),
+      phase:Math.random()*Math.PI*2,
+    });
+  }
+}
+
+function drawIceCrystals(){
+  iceCrystals.forEach(ic=>{
+    ic.rot+=ic.rotSpeed;
+    const shimmer=0.7+0.3*Math.sin(time*0.00002+ic.phase);
+    const alpha=ic.alpha*shimmer;
+    if(alpha<0.02) return;
+    ctx.save();
+    ctx.translate(ic.x,ic.y);
+    ctx.rotate(ic.rot);
+    ctx.globalCompositeOperation='lighter';
+    // Hexagonal ice crystal
+    ctx.beginPath();
+    for(let j=0;j<6;j++){
+      const a=j*Math.PI/3;
+      const r=ic.size;
+      if(j===0) ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);
+      else ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+    }
+    ctx.closePath();
+    ctx.strokeStyle=`rgba(200,220,255,${alpha})`;
+    ctx.lineWidth=0.5;
+    ctx.stroke();
+    // Inner reflection
+    ctx.beginPath();
+    for(let j=0;j<6;j++){
+      const a=j*Math.PI/3+Math.PI/6;
+      const r=ic.size*0.3;
+      if(j===0) ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);
+      else ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+    }
+    ctx.closePath();
+    ctx.fillStyle=`rgba(180,210,255,${alpha*0.5})`;
+    ctx.fill();
+    ctx.globalCompositeOperation='source-over';
+    ctx.restore();
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// MAIN RENDER LOOP
+// ═══════════════════════════════════════════════════
+
+function draw(ts){
+  time=ts;
+
+  if(staticDirty){
+    buildAllStaticLayers();
+    initRefractionStars();
+    initIceCrystals();
+  }
+
+  // ── Time duality ────────────────────────────────
+  // Earth clouds: real-time drift ~20m/s (in pixel space ~0.02px/frame)
+  earthCloudOffset += 0.02;
+  // Deep space: "thousand years per second" collapse
+  spaceCollapse = (ts*0.001) % 1000; // 0-1000 cycle = "1000 years"
+
+  // ── Motion blur overlay (faint trail accumulator) ──
+  ctx.fillStyle='rgba(0,0,0,0.035)';
+  ctx.fillRect(0,0,W,H);
+
+  // ── Blit all 6 static layers ───────────────────
+  for(const id of ['l0','l1','l2','l3','l4','l5']){
+    const layer=staticLayers[id];
+    if(layer) ctx.drawImage(layer.canvas,0,0,W*dpr,H*dpr,0,0,W,H);
+  }
+
+  // ── Earth cloud drift overlay (dynamic on static base) ──
+  drawEarthCloudOverlay();
+
+  // ── Starlight refraction near Earth rim ─────────
+  drawStarlightRefraction();
+
+  // ── Bright stars sinusoidal twinkle (1000) ──────
+  brightStars.forEach(s=>{
+    const twinkle=0.5+0.5*Math.sin(time*0.000025*s.freq+s.phase);
+    if(twinkle<0.06) return;
+    const alpha=twinkle*0.85, sz=s.size*twinkle;
+    if(sz<0.2) return;
+    if(s.x<-10||s.x>W+10||s.y<-10||s.y>H+10) return;
+    ctx.globalCompositeOperation='lighter';
+    const g=ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,sz);
+    g.addColorStop(0,`rgba(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]},${alpha})`);
+    g.addColorStop(0.4,`rgba(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]},${alpha*0.5})`);
+    g.addColorStop(0.75,`rgba(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]},${alpha*0.06})`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g; ctx.fillRect(s.x-sz*2,s.y-sz*2,sz*4,sz*4);
+    ctx.globalCompositeOperation='source-over';
+  });
+
+  // ── Diffraction spikes (150) ───────────────────
+  spikeStars.forEach(s=>drawSpikes(s));
+
+  // ── Atmospheric fireball meteors ────────────────
+  meteors.forEach(m=>{
+    m.age+=1;
+    m.x+=m.vx; m.y+=m.vy;
+    if(m.age>m.maxLife||m.x<-30||m.x>W+30||m.y<-30||m.y>H+30){
+      spawnAtmoMeteor(false);
+      // remove old
+      const idx=meteors.indexOf(m);
+      if(idx>=0) meteors.splice(idx,1);
+      return;
+    }
+    drawAtmoMeteor(m);
+  });
+  // Ensure we always have 2-3
+  while(meteors.length<2) spawnAtmoMeteor(false);
+  while(meteors.length>3) meteors.shift();
+
+  // ── Deep space meteors (5 types) ────────────────
+  deepMeteors.forEach(m=>{
+    m.age+=1;
+    m.x+=m.vx; m.y+=m.vy;
+    if(m.age>m.maxLife||m.x<-30||m.x>W+30||m.y<-30||m.y>H+30){
+      spawnDeepMeteor(false);
+      const idx=deepMeteors.indexOf(m);
+      if(idx>=0) deepMeteors.splice(idx,1);
+      return;
+    }
+    drawDeepMeteor(m);
+  });
+
+  // ── Touch trails ────────────────────────────────
+  updateTouchTrails();
+  drawTouchTrails();
+
+  // ── Spark particles ─────────────────────────────
+  ctx.globalCompositeOperation='lighter';
+  for(let i=sparkParticles.length-1;i>=0;i--){
+    const p=sparkParticles[i];
+    p.life--;
+    if(p.life<=0){sparkParticles.splice(i,1);continue;}
+    const alpha=(p.life/p.maxLife)*0.82;
+    p.x+=p.vx; p.y+=p.vy;
+    p.vy+=p.gravity; p.vx*=0.985; p.vy*=0.985;
+    ctx.fillStyle=`rgba(${p.color[0]},${p.color[1]},${p.color[2]},${alpha})`;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.size*alpha,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalCompositeOperation='source-over';
+
+  // ── Ice crystals (foreground, cm-scale) ─────────
+  drawIceCrystals();
+
+  // ── Lens flares ─────────────────────────────────
+  flareSpots.forEach(drawFlare);
+
+  // ── Vignette ────────────────────────────────────
+  drawVignette();
+
+  // ── CCD noise ───────────────────────────────────
+  drawCCDNoise();
+
+  // ── Wishes (romantic phrases) ──────────────────
+  if(wishes){
+    wishes.forEach(w=>w.age++);
+    wishes=wishes.filter(w=>w.age<w.maxAge);
+    wishes.forEach(w=>{
+      const prog=w.age/w.maxAge;
+      const alpha=prog<0.1?prog/0.1:prog>0.75?(1-prog)/0.25:1;
+      if(alpha<0.01) return;
+      ctx.save();
+      ctx.globalAlpha=alpha;
+      ctx.fillStyle='#ffd700';
+      ctx.font=`bold ${14+prog*8}px "PingFang SC","Microsoft YaHei",sans-serif`;
+      ctx.textAlign='center';
+      ctx.shadowColor='rgba(255,107,157,0.6)';
+      ctx.shadowBlur=12;
+      ctx.fillText(w.text,w.x,w.y-w.age*0.5);
+      ctx.restore();
+    });
+  }
+
+  // ── 5-second auto-romance timer ─────────────────
+  romanceTick++;
+  if(romanceTick%300===0) autoRomance();
+
+  requestAnimationFrame(draw);
+}
+
+// ── Dynamic Earth cloud overlay ──────────────────
+function drawEarthCloudOverlay(){
+  if(!earthCX||!earthR) return;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(earthCX,earthCY,earthR*0.98,0,Math.PI*2); ctx.clip();
+  ctx.globalCompositeOperation='lighter';
+
+  // White cloud patches drifting westward (to the left)
+  // Real clouds at ~20m/s ≈ very slow pixel drift
+  const cloudShift=earthCloudOffset*2; // accumulated pixel drift
+
+  for(let i=0;i<25;i++){
+    const cx=earthCX+earthR*rand(-0.7,0.7)+cloudShift;
+    const cy=earthCY+earthR*rand(-0.7,0.7);
+    if(dist(cx,cy,earthCX,earthCY)>earthR*0.85) continue;
+    const cr=earthR*rand(0.04,0.15);
+    const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,cr);
+    cg.addColorStop(0,`rgba(255,255,255,${rand(0.03,0.09)})`);
+    cg.addColorStop(0.5,`rgba(245,248,255,${rand(0.02,0.05)})`);
+    cg.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=cg;
+    ctx.fillRect(cx-cr,cy-cr,cr*2,cr*2);
+  }
+
+  // Wrap clouds that drift off the edge
+  const wrapShift=(earthCloudOffset*2)%(earthR*1.4);
+  for(let i=0;i<8;i++){
+    const cx=earthCX+earthR*0.7+wrapShift+earthR*rand(-0.2,0);
+    const cy=earthCY+earthR*rand(-0.6,0.6);
+    if(dist(cx,cy,earthCX,earthCY)>earthR*0.85) continue;
+    const cr=earthR*rand(0.03,0.10);
+    const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,cr);
+    cg.addColorStop(0,`rgba(255,255,255,${rand(0.02,0.06)})`);
+    cg.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=cg;
+    ctx.fillRect(cx-cr,cy-cr,cr*2,cr*2);
+  }
+
+  // Ashen light (Earthshine on Moon — very subtle)
+  if(moonCX!==undefined){
+    ashenLight=0.5+0.5*Math.sin(time*0.000005);
+    const ag=ctx.createRadialGradient(moonCX,moonCY,moonR*0.5,moonCX,moonCY,moonR*1.2);
+    ag.addColorStop(0,'rgba(0,0,0,0)');
+    ag.addColorStop(0.6,`rgba(40,60,120,${0.02*ashenLight})`);
+    ag.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=ag;
+    ctx.fillRect(moonCX-moonR*2,moonCY-moonR*2,moonR*4,moonR*4);
+  }
+
+  ctx.globalCompositeOperation='source-over';
+  ctx.restore();
+}
+
+// Earth geometry cached for overlay
+let earthCX, earthCY, earthR, moonCX, moonCY, moonR;
+
+// ═══════════════════════════════════════════════════
+// EVENT HANDLERS
+// ═══════════════════════════════════════════════════
+
+function getPos(e){
+  if(e.touches) return {x:e.touches[0].clientX, y:e.touches[0].clientY};
+  return {x:e.clientX, y:e.clientY};
+}
+
+canvas.addEventListener('pointerdown',function(e){
+  const pos=getPos(e);
+  addTouchPoint(e.pointerId,pos.x,pos.y);
+  burstSparks(pos.x,pos.y); // star burst on click/tap
+});
+
+canvas.addEventListener('pointermove',function(e){
+  if(e.pointerType==='touch'||e.buttons>0){
+    const pos=getPos(e);
+    addTouchPoint(e.pointerId,pos.x,pos.y); // star trail on drag
+  }
+});
+
+canvas.addEventListener('pointerup',function(e){delete activeTouches[e.pointerId];});
+canvas.addEventListener('pointerleave',function(e){delete activeTouches[e.pointerId];});
+canvas.addEventListener('pointercancel',function(e){delete activeTouches[e.pointerId];});
+
+window.addEventListener('resize',resize);
+
+// ═══════════════════════════════════════════════════
+// ROMANCE SYSTEM — every 5s, English love phrases for Xu Yiting
+// ═══════════════════════════════════════════════════
+const ROMANCE=[
+  'Xu Yiting, you are my universe ✨',
+  'Forever begins with you, Xu Yiting 💫',
+  'My heart beats only for you 💗',
+  'You light up my entire world 🌟',
+  'Lost in your eyes, Xu Yiting 🌌',
+  'Love you to the stars and back 🚀',
+  'Every day with you is a gift 🎁',
+  'I fall for you every single day 💘',
+  'With you, I am finally home 🏡',
+  'You are my dream come true, Xu Yiting 🌙',
+  'A million stars could not match you ✨',
+  'Loving you is the easiest thing ever 💝',
+  'Xu Yiting, you are my always and forever ♾️',
+  'My heart chose you — every time 💓',
+  'Even the stars are jealous of you ⭐',
+  'You are my greatest adventure 🗺️',
+  'I love you more than words can say 💕',
+  'Every love song reminds me of you 🎶',
+  'You are the missing piece I found 🧩',
+  'Xu Yiting, you make ordinary moments magical 🪄',
+  'My love for you grows every second 📈',
+  'You are my once in a lifetime 💎',
+  'Xu Yiting, would you be mine? 💍',
+  'I would find you in any lifetime 🔁',
+  'Your smile is my favorite view 😊',
+  'You are the calm in my chaos 🧘',
+  'I choose you — today, tomorrow, always 💯',
+  'Xu Yiting, you are all I ever wanted 🌠',
+  'You are the poetry my heart writes 📝',
+  'To the moon and back, Xu Yiting 🌓',
+  'Xu Yiting, light-years can\'t measure my love 📏',
+  'You are my northern star, my constant guide ⭐',
+  'In this vast universe, I found you 🌌',
+  'Xu Yiting, you make my heart supernova 💥',
+  'Every atom in me loves every atom in you ⚛️',
+  'You are the gravity that holds me together 🪐',
+  'Xu Yiting, my love transcends spacetime 🕳️',
+  'The cosmos conspired for us to meet 🌠',
+  'You are more beautiful than a nebula 💖',
+  'Xu Yiting, you are my happily ever after 📖',
+  'I orbit around you, my sun ☀️',
+  'You make the darkest space feel like home 🏠',
+  'Xu Yiting, you are written in my stars 📜',
+  'A thousand lifetimes with you would not be enough ♾️',
+  'Your love is the light I follow home 🌅',
+  'Xu Yiting, you are my one and only 🫶',
+  'The universe is vast, but my heart chose you 💝',
+  'You are the reason I believe in magic 🪽',
+  'Xu Yiting, forever is not long enough with you ⌛',
+  'I love you to the edge of the observable universe 🌐',
+];
+let romanceTick=0;
+function autoRomance(){
+  const text=ROMANCE[Math.floor(Math.random()*ROMANCE.length)];
+  wishes.push({text,x:rand(W*0.12,W*0.88),y:rand(H*0.22,H*0.78),age:0,maxAge:220});
+  burstSparks(halfW+rand(-150,150),halfH+rand(-150,150),40);
+}
+
+// ═══════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════
+
+resize();
+initFlareSpots();
+autoRomance();
+requestAnimationFrame(draw);
+
+})();
+
+</script>
+</body>
+</html>
